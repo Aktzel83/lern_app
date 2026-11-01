@@ -8,7 +8,7 @@
     <style>
         #aufgabe { font-size: 2.5rem !important; min-height: 120px; display: flex; align-items: center; justify-content: center; word-break: break-word; line-height: 1.2; margin: 20px 0; padding: 15px; }
         #antwort-input { width: 90%; padding: 18px; font-size: 1.4rem; border: 4px solid var(--dark); border-radius: 20px; text-align: center; font-family: 'Arial Black', sans-serif; margin-bottom: 10px; background: #e3f2fd; box-shadow: 0 4px 0 var(--dark); }
-        #sprach-modus, #klassen-stufe { width: 95%; padding: 15px; font-size: 1.2rem; border: 4px solid var(--dark); border-radius: 20px; font-family: 'Arial Black', sans-serif; margin-bottom: 20px; background-color: white; cursor: pointer; }
+        #sprach-modus, #klassen-stufe, #sprache { width: 95%; padding: 15px; font-size: 1.2rem; border: 4px solid var(--dark); border-radius: 20px; font-family: 'Arial Black', sans-serif; margin-bottom: 20px; background-color: white; cursor: pointer; }
         .btn-full { width: 100%; margin-top: 10px; }
         #ergebnis-text { max-height: 500px; overflow-y: auto; padding: 10px; text-align: center; }
         .fehler-box { margin-top: 20px; text-align: left; font-size: 1.1rem; background: #fff3cd; padding: 15px; border: 3px solid var(--dark); border-radius: 15px; box-shadow: 4px 4px 0 var(--dark); }
@@ -36,13 +36,13 @@
     <div id="start-screen">
         <h1>Vokabel-Held ✍️</h1>
         <input type="text" id="spieler-name" placeholder="Dein Name">
-        <h3>Klassenstufe:</h3>
-        <select id="klassen-stufe">
-            <option value="vocabulary_klasse3.json">Klasse 3</option>
-            <option value="vocabulary_klasse4.json">Klasse 4</option>
-            <option value="vocabulary.json" selected>Klasse 5</option>
-            <option value="vocabulary_klasse6.json">Klasse 6</option>
+        <h3>Sprache:</h3>
+        <select id="sprache">
+            <option value="englisch">Englisch</option>
+            <option value="spanisch">Spanisch</option>
         </select>
+        <h3>Klassenstufe:</h3>
+        <select id="klassen-stufe"></select>
         <h3>Abfragemodus:</h3>
         <select id="sprach-modus">
             <option value="en_de">Englisch ➔ Deutsch</option>
@@ -78,19 +78,62 @@
 
     document.getElementById('antwort-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') pruefeAntwort(); });
 
-    // Gewählte Klasse merken, damit sie auch nach NOCHMAL (Neuladen) erhalten bleibt
+    const SPRACHEN = {
+        englisch: {
+            name: "Englisch",
+            standard: "vocabulary.json",
+            klassen: {
+                "Klasse 3": "vocabulary_klasse3.json",
+                "Klasse 4": "vocabulary_klasse4.json",
+                "Klasse 5": "vocabulary.json",
+                "Klasse 6": "vocabulary_klasse6.json"
+            }
+        },
+        spanisch: {
+            name: "Spanisch",
+            standard: "vocabulary_spanisch_klasse6.json",
+            klassen: {
+                "Klasse 6": "vocabulary_spanisch_klasse6.json",
+                "Klasse 7": "vocabulary_spanisch_klasse7.json",
+                "Klasse 8": "vocabulary_spanisch_klasse8.json",
+                "Klasse 9": "vocabulary_spanisch_klasse9.json",
+                "Klasse 10": "vocabulary_spanisch_klasse10.json",
+                "Klasse 11": "vocabulary_spanisch_klasse11.json",
+                "Klasse 12": "vocabulary_spanisch_klasse12.json"
+            }
+        }
+    };
+    const sprachAuswahl = document.getElementById('sprache');
     const klassenAuswahl = document.getElementById('klassen-stufe');
-    try {
-        const gespeicherteKlasse = localStorage.getItem('klassenStufe');
-        if ([...klassenAuswahl.options].some(o => o.value === gespeicherteKlasse)) klassenAuswahl.value = gespeicherteKlasse;
-    } catch (e) {}
-    klassenAuswahl.addEventListener('change', () => {
-        try { localStorage.setItem('klassenStufe', klassenAuswahl.value); } catch (e) {}
-    });
+    const modusAuswahl = document.getElementById('sprach-modus');
+
+    function leseAuswahl(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+    function merkeAuswahl(key, wert) { try { localStorage.setItem(key, wert); } catch (e) {} }
+
+    // Klassen und Abfragemodus passend zur Sprache anzeigen; die Klasse wird je Sprache gemerkt
+    function zeigeSprache() {
+        const s = SPRACHEN[sprachAuswahl.value];
+        klassenAuswahl.innerHTML = Object.entries(s.klassen).map(([name, datei]) => `<option value="${datei}">${name}</option>`).join("");
+        klassenAuswahl.value = leseAuswahl('klasse_' + sprachAuswahl.value);
+        if (klassenAuswahl.selectedIndex < 0) klassenAuswahl.value = s.standard;
+        modusAuswahl.options[0].text = `${s.name} ➔ Deutsch`;
+        modusAuswahl.options[1].text = `Deutsch ➔ ${s.name}`;
+    }
+
+    sprachAuswahl.value = leseAuswahl('sprache');
+    if (sprachAuswahl.selectedIndex < 0) sprachAuswahl.value = "englisch";
+    zeigeSprache();
+    sprachAuswahl.addEventListener('change', () => { merkeAuswahl('sprache', sprachAuswahl.value); zeigeSprache(); });
+    klassenAuswahl.addEventListener('change', () => merkeAuswahl('klasse_' + sprachAuswahl.value, klassenAuswahl.value));
 
     // Satzzeichen entfernen & Kleinschreibung
     function bereinigeText(text) {
-        return text.replace(/\*/g, "").toLowerCase().replace(/[.,?!;:()'´`"/-]/g, "").replace(/\s+/g, " ").trim();
+        return text.replace(/\*/g, "").toLowerCase().replace(/[.,?!¿¡;:()'´`"/-]/g, "").replace(/\s+/g, " ").trim();
+    }
+
+    // Spanisch: Akzente und Artikel dürfen in der Antwort fehlen (ñ bleibt ein eigener Buchstabe)
+    function bereinigeSpanisch(text) {
+        return bereinigeText(text).normalize('NFD').replace(/[́̈]/g, "").normalize('NFC').replace(/^(el|la|los|las|der|die|das) /, "");
     }
 
     async function starteTraining() {
@@ -163,20 +206,23 @@
         const inputRaw = document.getElementById('antwort-input').value.trim();
         if (inputRaw === "" || document.getElementById('quiz-screen').classList.contains('hidden')) return;
         
-        const inputSafe = bereinigeText(inputRaw);
+        const bereinige = sprachAuswahl.value === "spanisch" ? bereinigeSpanisch : bereinigeText;
+        const inputSafe = bereinige(inputRaw);
         const v = lernStapel[aktuellerIndex];
         const ziel = document.getElementById('aufgabe').dataset.ziel;
-        
+
         let korrekt = false;
         if (ziel === "de") {
-            korrekt = v.de.some(d => bereinigeText(d) === inputSafe);
+            korrekt = v.de.some(d => bereinige(d) === inputSafe);
         } else {
-            korrekt = bereinigeText(v.en) === inputSafe;
+            korrekt = bereinige(v.en) === inputSafe;
         }
 
-        if (korrekt) { 
-            score++; 
-            document.getElementById('feedback').innerText = "RICHTIG! 🌟"; 
+        if (korrekt) {
+            score++;
+            // Fehlten Akzent oder Artikel, trotzdem die genaue Schreibweise zeigen
+            const genau = ziel === "en" && bereinigeText(v.en) !== bereinigeText(inputRaw) ? ` Genau: ${v.en}` : "";
+            document.getElementById('feedback').innerText = "RICHTIG! 🌟" + genau;
             document.getElementById('feedback').style.color = "var(--comic-green)"; 
         } else { 
             let loesungenSauber = v.de.map(d => d.replace("*", ""));

@@ -8,7 +8,7 @@
     <style>
         #aufgabe { font-size: 2.5rem !important; min-height: 120px; display: flex; align-items: center; justify-content: center; word-break: break-word; line-height: 1.2; margin: 20px 0; padding: 15px; }
         #antwort-input { width: 90%; padding: 18px; font-size: 1.4rem; border: 4px solid var(--dark); border-radius: 20px; text-align: center; font-family: 'Arial Black', sans-serif; margin-bottom: 10px; background: #e3f2fd; box-shadow: 0 4px 0 var(--dark); }
-        #sprach-modus { width: 95%; padding: 15px; font-size: 1.2rem; border: 4px solid var(--dark); border-radius: 20px; font-family: 'Arial Black', sans-serif; margin-bottom: 20px; background-color: white; cursor: pointer; }
+        #sprach-modus, #klassen-stufe { width: 95%; padding: 15px; font-size: 1.2rem; border: 4px solid var(--dark); border-radius: 20px; font-family: 'Arial Black', sans-serif; margin-bottom: 20px; background-color: white; cursor: pointer; }
         .btn-full { width: 100%; margin-top: 10px; }
         #ergebnis-text { max-height: 500px; overflow-y: auto; padding: 10px; text-align: center; }
         .fehler-box { margin-top: 20px; text-align: left; font-size: 1.1rem; background: #fff3cd; padding: 15px; border: 3px solid var(--dark); border-radius: 15px; box-shadow: 4px 4px 0 var(--dark); }
@@ -36,6 +36,13 @@
     <div id="start-screen">
         <h1>Vokabel-Held ✍️</h1>
         <input type="text" id="spieler-name" placeholder="Dein Name">
+        <h3>Klassenstufe:</h3>
+        <select id="klassen-stufe">
+            <option value="vocabulary_klasse3.json">Klasse 3</option>
+            <option value="vocabulary_klasse4.json">Klasse 4</option>
+            <option value="vocabulary.json" selected>Klasse 5</option>
+            <option value="vocabulary_klasse6.json">Klasse 6</option>
+        </select>
         <h3>Abfragemodus:</h3>
         <select id="sprach-modus">
             <option value="en_de">Englisch ➔ Deutsch</option>
@@ -71,6 +78,16 @@
 
     document.getElementById('antwort-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') pruefeAntwort(); });
 
+    // Gewählte Klasse merken, damit sie auch nach NOCHMAL (Neuladen) erhalten bleibt
+    const klassenAuswahl = document.getElementById('klassen-stufe');
+    try {
+        const gespeicherteKlasse = localStorage.getItem('klassenStufe');
+        if ([...klassenAuswahl.options].some(o => o.value === gespeicherteKlasse)) klassenAuswahl.value = gespeicherteKlasse;
+    } catch (e) {}
+    klassenAuswahl.addEventListener('change', () => {
+        try { localStorage.setItem('klassenStufe', klassenAuswahl.value); } catch (e) {}
+    });
+
     // Satzzeichen entfernen & Kleinschreibung
     function bereinigeText(text) {
         return text.replace(/\*/g, "").toLowerCase().replace(/[.,?!;:()'´`"/-]/g, "").replace(/\s+/g, " ").trim();
@@ -79,7 +96,7 @@
     async function starteTraining() {
         try {
             const [vRes, cRes] = await Promise.all([
-                fetch('vocabulary.json?v=' + Date.now()), 
+                fetch(klassenAuswahl.value + '?v=' + Date.now()),
                 fetch('config.json?v=' + Date.now())
             ]);
             if (!vRes.ok) throw new Error("Vokabeldatei fehlt");
